@@ -46,6 +46,8 @@ namespace NetworkBroadcaster
         {
             byte[] fullMessage = new byte[message.Length + 2];
 
+            // Create CRC
+
             return fullMessage;
         }
     }
