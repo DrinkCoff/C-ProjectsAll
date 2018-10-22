@@ -12,6 +12,8 @@ namespace NetworkBroadcaster
     {
         static void Main(string[] args)
         {
+            List<byte> msg = AdsbHeartbeat.Create();
+
             int PORT = 4000;
             UdpClient udpClient = new UdpClient();
             udpClient.Client.Bind(new IPEndPoint(IPAddress.Any, PORT));
@@ -26,7 +28,7 @@ namespace NetworkBroadcaster
             //    }
             //});
 
-            var data = Encoding.UTF8.GetBytes("ABCD");
+            var data = Encoding.UTF8.GetBytes("VIDHI");
             udpClient.Send(data, data.Length, "255.255.255.255", PORT);
         }
 
