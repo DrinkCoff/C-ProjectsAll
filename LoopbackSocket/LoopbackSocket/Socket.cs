@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -10,23 +11,62 @@ namespace LoopbackSocket
     {
         private Socket socket;
         private Thread listenerThread;
+        public BackgroundWorker backgroundWorker;
         private static int port = 5000;
 
         public static int SOCKET_TIMEOUT = 10000;
         public static int RX_BUFFER_LENGTH = 64;
 
-        public Loopback()
+        public Loopback(bool thredOn)
         {
             this.socket = null;
 
-            try
+            backgroundWorker = new BackgroundWorker();
+            backgroundWorker.DoWork += new DoWorkEventHandler(BackgroundWorkerDoWork);
+            backgroundWorker.ProgressChanged += new ProgressChangedEventHandler(BackgroundWorkerProgress);
+            backgroundWorker.RunWorkerCompleted += new RunWorkerCompletedEventHandler(BackgroundWorkerCompleted);
+
+            if (thredOn)
             {
-                this.listenerThread = new Thread(SocketListner);
-                this.listenerThread.Start(this);
+                try
+                {
+                    this.listenerThread = new Thread(SocketListner);
+                    this.listenerThread.Start(this);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("Error Opening Thread " + e);
+                }
             }
-            catch(Exception e)
+        }
+
+        private void BackgroundWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        {
+            Console.WriteLine("Received!");
+        }
+
+        private void BackgroundWorkerProgress(object sender, ProgressChangedEventArgs e)
+        {
+            Console.WriteLine("Reporting Progress!");
+        }
+
+        private void BackgroundWorkerDoWork(object sender, DoWorkEventArgs e)
+        {
+            this.OpenSocket();
+
+            byte[] buffer = new byte[RX_BUFFER_LENGTH];
+            EndPoint endPoint = new IPEndPoint(IPAddress.Any, 0);
+            int bytesRead = this.socket.ReceiveFrom(buffer, ref endPoint);
+            if (bytesRead > 0)
             {
-                Console.WriteLine("Error Opening Thread " + e);
+                if (((IPEndPoint)endPoint).Address.Equals(IPAddress.Parse("127.0.0.1")))
+                {
+                    Console.WriteLine("Message from local host.");
+                }
+                else
+                {
+                    Console.WriteLine("Message from remote host.");
+                }
             }
         }
 
@@ -38,22 +78,29 @@ namespace LoopbackSocket
 
             while(true)
             {
-                if(loopback.socket.Poll(SOCKET_TIMEOUT, SelectMode.SelectRead))
+                try
                 {
-                    byte[] buffer = new byte[RX_BUFFER_LENGTH];
-                    EndPoint endPoint = new IPEndPoint(IPAddress.Any, 0);
-                    int bytesRead = loopback.socket.ReceiveFrom(buffer, ref endPoint);
-                    if(bytesRead > 0)
+                    if (loopback.socket.Poll(SOCKET_TIMEOUT, SelectMode.SelectRead))
                     {
-                        if(((IPEndPoint)endPoint).Address.Equals(IPAddress.Parse("127.0.0.1")))
+                        byte[] buffer = new byte[RX_BUFFER_LENGTH];
+                        EndPoint endPoint = new IPEndPoint(IPAddress.Any, 0);
+                        int bytesRead = loopback.socket.ReceiveFrom(buffer, ref endPoint);
+                        if (bytesRead > 0)
                         {
-                            Console.WriteLine("Messag from local host.");
-                        }
-                        else
-                        {
-                            Console.WriteLine("Messag from remote host.");
+                            if (((IPEndPoint)endPoint).Address.Equals(IPAddress.Parse("127.0.0.1")))
+                            {
+                                Console.WriteLine("Message from local host.");
+                            }
+                            else
+                            {
+                                Console.WriteLine("Message from remote host.");
+                            }
                         }
                     }
+                }
+                catch(Exception e)
+                {
+                    Console.WriteLine("Exception: " + e);
                 }
             }
         }
@@ -62,6 +109,8 @@ namespace LoopbackSocket
         {
             try
             {
+                this.OpenSocket();
+
                 string message = "Test";
                 byte[] buffer = Encoding.ASCII.GetBytes(message);
                 int length = buffer.Length;
