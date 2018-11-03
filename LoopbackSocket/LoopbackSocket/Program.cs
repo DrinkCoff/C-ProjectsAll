@@ -13,15 +13,23 @@ namespace LoopbackSocket
         //This is the console application entry point.
         public static void Main()
         {
-            Loopback loopback = new Loopback(false);
-            int delayInMilliseconds = 250;
+            Loopback loopback = new Loopback(false, true);
+            int delayInMilliseconds = 10000;
+            string message = "Hello";
+            int sendPort = 6000;
 
-            loopback.backgroundWorker.RunWorkerAsync();
+            loopback.received = true;
+            //loopback.backgroundWorker.RunWorkerAsync();
             //Thread.Sleep(delayInMilliseconds);
-            loopback.Sender();
 
             while (true)
             {
+                if (loopback.received)
+                {
+                    loopback.Sender(message, sendPort);
+                    loopback.received = false;
+                }
+
                 Thread.Sleep(delayInMilliseconds);
                 //loopback.Sender();
             }
